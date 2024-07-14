@@ -706,9 +706,15 @@ public class LandscapeAnalysisResults {
                         }
                     });
 
-                    existingContributor.addRepository(repositoryAnalysisResults,
-                            firstCommitDate, latestCommitDate,
-                            repositoryCommits, repositoryCommits30Days, repositoryCommits90Days, new ArrayList<>(commitDates));
+                    RepositoryInfo repositoryInfo = new RepositoryInfo(
+                            firstCommitDate,
+                            latestCommitDate,
+                            repositoryCommits,
+                            repositoryCommits30Days,
+                            repositoryCommits90Days,
+                            new ArrayList<>(commitDates)
+                    );
+                    existingContributor.addRepository(repositoryAnalysisResults, repositoryInfo);
 
                     if (firstCommitDate.compareTo(contributorInfo.getFirstCommitDate()) < 0) {
                         contributorInfo.setFirstCommitDate(firstCommitDate);
@@ -732,8 +738,16 @@ public class LandscapeAnalysisResults {
 
                     ContributorRepositories newContributorWithRepositories = new ContributorRepositories(newContributor);
 
-                    newContributorWithRepositories.addRepository(repositoryAnalysisResults, newContributor.getFirstCommitDate(),
-                            newContributor.getLatestCommitDate(), repositoryCommits, repositoryCommits30Days, repositoryCommits90Days, new ArrayList<>(commitDates));
+                    RepositoryInfo repositoryInfo = new RepositoryInfo(
+                            firstCommitDate,
+                            latestCommitDate,
+                            repositoryCommits,
+                            repositoryCommits30Days,
+                            repositoryCommits90Days,
+                            new ArrayList<>(commitDates)
+                    );
+
+                    newContributorWithRepositories.addRepository(repositoryAnalysisResults, repositoryInfo);
 
                     map.put(contributorId, newContributorWithRepositories);
                     list.add(newContributorWithRepositories);
