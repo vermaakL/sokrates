@@ -320,7 +320,7 @@ public class LandscapeReportGenerator {
         renderer.setOrientation("LR");
         renderer.setTypeGraph();
         List<ComponentDependency> dependencies = landscapeAnalysisResults.getSubLandscapeDependenciesViaRepositoriesWithSameContributors();
-        String graphvizContent = renderer.getGraphvizContent(landscapeAnalysisResults.getLevel1SubLandscapes().stream().map(s -> "[" + s + "]").collect(Collectors.toCollection(ArrayList::new)), landscapeAnalysisResults.getSubLandscapeIndirectDependenciesViaRepositoriesWithSameContributors());
+        String graphvizContent = renderer.getGraphvizContent(landscapeAnalysisResults.getLevel1SubLandscapes().stream().map(s -> "[" + s + "]").collect(Collectors.toCollection(ArrayList::new)), landscapeAnalysisResults.getSubLandIndDepsViaSameRepos());
 
         landscapeReport.startShowMoreBlock("show sub-landscape/repository dependencies...");
         landscapeReport.addGraphvizFigure("sub_landscape_dependencies_same_contributors", "Extension dependencies", graphvizContent);

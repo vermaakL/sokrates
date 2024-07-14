@@ -145,7 +145,7 @@ public class LandscapeAnalysisResults {
     }
 
     @JsonIgnore
-    public List<ComponentDependency> getSubLandscapeIndirectDependenciesViaRepositoriesWithSameContributors() {
+    public List<ComponentDependency> getSubLandIndDepsViaSameRepos() {
         return subLandscapeIndirectDependenciesViaRepositoriesWithSameContributors;
     }
 
