@@ -46,6 +46,8 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
 import java.util.*;
+import java.util.function.Function;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
@@ -594,136 +596,170 @@ public class LandscapeReportGenerator {
     private void addSubLandscapeSection(List<SubLandscapeLink> subLandscapes) {
         LandscapeConfiguration configuration = landscapeAnalysisResults.getConfiguration();
         final int maxDepth = configuration.getMaxSublandscapeDepth();
-        List<SubLandscapeLink> links = subLandscapes.stream().filter(l -> maxDepth == 0 || getPathDepth(l.getIndexFilePath()) <= maxDepth).collect(Collectors.toList());
-        if (links.size() > 0) {
+        List<SubLandscapeLink> links = filterSubLandscapes(subLandscapes, maxDepth);
+
+        if (!links.isEmpty()) {
             Collections.sort(links, Comparator.comparing(a -> getLabel(a).toLowerCase()));
             landscapeReport.startDiv("margin: 12px; margin-bottom: 22px");
 
-            landscapeReport.addHtmlContent("zoomable circles: ");
-            landscapeReport.addNewTabLink("contributors (30d)", "visuals/sub_landscapes_zoomable_circles_" + CONTRIBUTORS_30_D + ".html");
-            landscapeReport.addHtmlContent(" | ");
-            landscapeReport.addNewTabLink("commits (30d)", "visuals/sub_landscapes_zoomable_circles_" + COMMITS_30_D + ".html");
-            landscapeReport.addHtmlContent(" | ");
-            landscapeReport.addNewTabLink("lines of code (main)", "visuals/sub_landscapes_zoomable_circles_" + MAIN_LOC + ".html");
-            landscapeReport.addLineBreak();
-            landscapeReport.addHtmlContent("zoomable sunburst: ");
-            landscapeReport.addNewTabLink("contributors (30d)", "visuals/sub_landscapes_zoomable_sunburst_" + CONTRIBUTORS_30_D + ".html");
-            landscapeReport.addHtmlContent(" | ");
-            landscapeReport.addNewTabLink("commits (30d)", "visuals/sub_landscapes_zoomable_sunburst_" + COMMITS_30_D + ".html");
-            landscapeReport.addHtmlContent(" | ");
-            landscapeReport.addNewTabLink("lines of code (main)", "visuals/sub_landscapes_zoomable_sunburst_" + MAIN_LOC + ".html");
+            addZoomableLinks();
             landscapeReport.addLineBreak();
             landscapeReport.addLineBreak();
 
             landscapeReport.startTable();
-            landscapeReport.addTableHeader("", "", "repositories", "main loc", "test loc", "other loc", "commits<br>(all time)", "contributors<br>(30 days)", "commits<br>(30 days)", "commit period");
+            addTableHeader();
+
             String prevRoot[] = {""};
             List<LandscapeAnalysisResultsReadData> loadedSubLandscapes = new ArrayList<>();
-            links.stream().sorted((a, b) -> compareSubLandscapeLinks(a, b)).forEach(subLandscape -> {
-                LOG.info("Adding " + subLandscape.getIndexFilePath());
-                String labelText = StringUtils.removeEnd(getLabel(subLandscape), "/");
-                String label = labelText;
-                String style = "";
-                String root = label.replaceAll("/.*", "");
-                boolean isRoot;
-                if (!prevRoot[0].equals(root)) {
-                    isRoot = true;
-                    label = "<b>" + label + "</b>";
-                    style = "color: black; font-weight: bold;";
-                } else {
-                    isRoot = false;
-                    int lastIndex = label.lastIndexOf("/");
-                    label = "<span style='color: lightgrey'>" + label.substring(0, lastIndex + 1) + "</span>" + label.substring(lastIndex + 1) + "";
-                    style = "color: grey; font-size: 90%";
-                }
-                String href = configuration.getRepositoryReportsUrlPrefix() + subLandscape.getIndexFilePath();
-                LandscapeAnalysisResultsReadData subLandscapeAnalysisResults = getSubLandscapeAnalysisResults(subLandscape);
-                landscapeReport.startTableRow(style);
-                LandscapeConfiguration subLandscapeConfig = getSubLandscapeConfig(subLandscape);
-                Metadata metadata = subLandscapeConfig.getMetadata();
-                landscapeReport.addTableCell(!labelText.contains("/") ? ("<a href='" + href + "' target='_blank'>" +
-                        (StringUtils.isNotBlank(metadata.getLogoLink())
-                                ? "<img src='" + getLogoLink(configuration.getRepositoryReportsUrlPrefix() + subLandscape.getIndexFilePath().replace("/index.html", ""), metadata.getLogoLink()) + "' " +
-                                "style='vertical-align: middle; width: 24px' " +
-                                "onerror=\"this.onerror=null;this.src='https://zeljkoobrenovic.github.io/sokrates-media/icons/landscape.png'\">"
-                                : "<img src='https://zeljkoobrenovic.github.io/sokrates-media/icons/landscape.png' style='vertical-align: middle; width: 24px'>") +
-                        "</a>") : "", "text-align: center;");
-
-                landscapeReport.startTableCell();
-                landscapeReport.addNewTabLink(label, href);
-                loadedSubLandscapes.add(subLandscapeAnalysisResults);
-                landscapeReport.endTableCell();
-                landscapeReport.startTableCell("text-align: right;");
-                if (subLandscapeAnalysisResults != null) {
-                    landscapeReport.addHtmlContent(FormattingUtils.formatCount(subLandscapeAnalysisResults.getRepositoriesCount()) + "");
-                }
-                landscapeReport.endTableCell();
-                landscapeReport.startTableCell("text-align: right;");
-                if (subLandscapeAnalysisResults != null) {
-                    landscapeReport.addHtmlContent(FormattingUtils.formatCount(subLandscapeAnalysisResults.getMainLoc()) + "");
-                }
-                landscapeReport.endTableCell();
-                landscapeReport.startTableCell("text-align: right;");
-                if (subLandscapeAnalysisResults != null) {
-                    landscapeReport.addHtmlContent(FormattingUtils.formatCount(subLandscapeAnalysisResults.getTestLoc()) + "");
-                }
-                landscapeReport.endTableCell();
-                landscapeReport.endTableCell();
-                landscapeReport.startTableCell("text-align: right;");
-                if (subLandscapeAnalysisResults != null) {
-                    int other = subLandscapeAnalysisResults.getBuildAndDeploymentLoc()
-                            + subLandscapeAnalysisResults.getGeneratedLoc() + subLandscapeAnalysisResults.getOtherLoc();
-                    landscapeReport.addHtmlContent("<span style='color: lightgrey'>" + FormattingUtils.formatCount(other) + "</span>");
-                }
-                landscapeReport.endTableCell();
-                landscapeReport.startTableCell("text-align: right;");
-                if (subLandscapeAnalysisResults != null) {
-                    landscapeReport.addHtmlContent(FormattingUtils.formatCount(subLandscapeAnalysisResults.getCommitsCount()) + "");
-                }
-                landscapeReport.endTableCell();
-                landscapeReport.startTableCell("text-align: right;");
-                if (subLandscapeAnalysisResults != null) {
-                    landscapeReport.addHtmlContent(FormattingUtils.formatCount(subLandscapeAnalysisResults.getRecentContributorsCount()) + "");
-                }
-                landscapeReport.endTableCell();
-                landscapeReport.startTableCell("text-align: right;");
-                if (subLandscapeAnalysisResults != null) {
-                    landscapeReport.addHtmlContent(FormattingUtils.formatCount(subLandscapeAnalysisResults.getCommitsCount30Days()) + "");
-                }
-                landscapeReport.endTableCell();
-                landscapeReport.startTableCell("text-align: right; font-size: 70%");
-                if (subLandscapeAnalysisResults != null) {
-                    String firstYear = DateUtils.getYear(subLandscapeAnalysisResults.getFirstCommitDate());
-                    String lastYear = DateUtils.getYear(subLandscapeAnalysisResults.getLatestCommitDate());
-                    landscapeReport.addHtmlContent(firstYear);
-                    landscapeReport.addHtmlContent("-");
-                    landscapeReport.addHtmlContent(lastYear);
-                    try {
-                        int first = Integer.parseInt(firstYear);
-                        int last = Integer.parseInt(lastYear);
-                        if (last >= first) {
-                            int width = Math.min(20, last - first + 1) * 7;
-                            String periodStyle = "margin-left: auto; margin-right: 0; margin-top: 2px; padding: 0; width: " + width + "px;";
-                            if (!isRoot) {
-                                periodStyle += "background-color: lightgrey; height: 4px;";
-                            } else {
-                                periodStyle += "height: 7px; background-color: green;";
-                            }
-                            landscapeReport.addContentInDiv("", periodStyle);
-                        }
-                    } catch (NumberFormatException e) {
-                    }
-                }
-                landscapeReport.endTableCell();
-                landscapeReport.endTableRow();
-
-                prevRoot[0] = root;
+            links.stream().sorted(this::compareSubLandscapeLinks).forEach(subLandscape -> {
+                processSubLandscape(subLandscape, configuration, prevRoot, loadedSubLandscapes);
             });
-            landscapeReport.endTable();
 
+            landscapeReport.endTable();
             landscapeReport.endDiv();
         }
+    }
 
+    private List<SubLandscapeLink> filterSubLandscapes(List<SubLandscapeLink> subLandscapes, int maxDepth) {
+        return subLandscapes.stream()
+                .filter(l -> maxDepth == 0 || getPathDepth(l.getIndexFilePath()) <= maxDepth)
+                .collect(Collectors.toList());
+    }
+
+    private void addZoomableLinks() {
+        landscapeReport.addHtmlContent("zoomable circles: ");
+        addZoomableLink("contributors (30d)", CONTRIBUTORS_30_D);
+        landscapeReport.addHtmlContent(" | ");
+        addZoomableLink("commits (30d)", COMMITS_30_D);
+        landscapeReport.addHtmlContent(" | ");
+        addZoomableLink("lines of code (main)", MAIN_LOC);
+        landscapeReport.addLineBreak();
+        landscapeReport.addHtmlContent("zoomable sunburst: ");
+        addZoomableLink("contributors (30d)", CONTRIBUTORS_30_D);
+        landscapeReport.addHtmlContent(" | ");
+        addZoomableLink("commits (30d)", COMMITS_30_D);
+        landscapeReport.addHtmlContent(" | ");
+        addZoomableLink("lines of code (main)", MAIN_LOC);
+    }
+
+    private void addZoomableLink(String label, String type) {
+        landscapeReport.addNewTabLink(label, "visuals/sub_landscapes_zoomable_circles_" + type + ".html");
+    }
+
+    private void addTableHeader() {
+        landscapeReport.addTableHeader("", "", "repositories", "main loc", "test loc", "other loc",
+                "commits<br>(all time)", "contributors<br>(30 days)",
+                "commits<br>(30 days)", "commit period");
+    }
+
+    private void processSubLandscape(SubLandscapeLink subLandscape, LandscapeConfiguration configuration,
+                                     String[] prevRoot, List<LandscapeAnalysisResultsReadData> loadedSubLandscapes) {
+        LOG.info("Adding " + subLandscape.getIndexFilePath());
+        String labelText = StringUtils.removeEnd(getLabel(subLandscape), "/");
+        String label = labelText;
+        String style = "";
+        String root = label.replaceAll("/.*", "");
+        boolean isRoot;
+
+        if (!prevRoot[0].equals(root)) {
+            isRoot = true;
+            label = "<b>" + label + "</b>";
+            style = "color: black; font-weight: bold;";
+        } else {
+            isRoot = false;
+            int lastIndex = label.lastIndexOf("/");
+            label = "<span style='color: lightgrey'>" + label.substring(0, lastIndex + 1) + "</span>" + label.substring(lastIndex + 1);
+            style = "color: grey; font-size: 90%";
+        }
+
+        String href = configuration.getRepositoryReportsUrlPrefix() + subLandscape.getIndexFilePath();
+        LandscapeAnalysisResultsReadData subLandscapeAnalysisResults = getSubLandscapeAnalysisResults(subLandscape);
+        landscapeReport.startTableRow(style);
+        addLogoCell(configuration, subLandscape, labelText, href);
+        addTableCell(label, href);
+        loadedSubLandscapes.add(subLandscapeAnalysisResults);
+
+        addDataCells(subLandscapeAnalysisResults);
+        addCommitPeriodCell(subLandscapeAnalysisResults, isRoot);
+
+        landscapeReport.endTableRow();
+        prevRoot[0] = root;
+    }
+
+    private void addLogoCell(LandscapeConfiguration configuration, SubLandscapeLink subLandscape, String labelText, String href) {
+        LandscapeConfiguration subLandscapeConfig = getSubLandscapeConfig(subLandscape);
+        Metadata metadata = subLandscapeConfig.getMetadata();
+        landscapeReport.addTableCell(!labelText.contains("/") ? ("<a href='" + href + "' target='_blank'>" +
+                (StringUtils.isNotBlank(metadata.getLogoLink())
+                        ? "<img src='" + getLogoLink(configuration.getRepositoryReportsUrlPrefix() + subLandscape.getIndexFilePath().replace("/index.html", ""), metadata.getLogoLink()) + "' " +
+                        "style='vertical-align: middle; width: 24px' " +
+                        "onerror=\"this.onerror=null;this.src='https://zeljkoobrenovic.github.io/sokrates-media/icons/landscape.png'\">"
+                        : "<img src='https://zeljkoobrenovic.github.io/sokrates-media/icons/landscape.png' style='vertical-align: middle; width: 24px'>") +
+                "</a>") : "", "text-align: center;");
+    }
+
+    private void addTableCell(String label, String href) {
+        landscapeReport.startTableCell();
+        landscapeReport.addNewTabLink(label, href);
+        landscapeReport.endTableCell();
+    }
+
+    private void addDataCells(LandscapeAnalysisResultsReadData subLandscapeAnalysisResults) {
+        addDataCell(subLandscapeAnalysisResults, FormattingUtils::formatCount, subLandscapeAnalysisResults::getRepositoriesCount);
+        addDataCell(subLandscapeAnalysisResults, FormattingUtils::formatCount, subLandscapeAnalysisResults::getMainLoc);
+        addDataCell(subLandscapeAnalysisResults, FormattingUtils::formatCount, subLandscapeAnalysisResults::getTestLoc);
+        addOtherLocCell(subLandscapeAnalysisResults);
+        addDataCell(subLandscapeAnalysisResults, FormattingUtils::formatCount, subLandscapeAnalysisResults::getCommitsCount);
+        addDataCell(subLandscapeAnalysisResults, FormattingUtils::formatCount, subLandscapeAnalysisResults::getRecentContributorsCount);
+        addDataCell(subLandscapeAnalysisResults, FormattingUtils::formatCount, subLandscapeAnalysisResults::getCommitsCount30Days);
+    }
+
+    private void addDataCell(LandscapeAnalysisResultsReadData subLandscapeAnalysisResults,
+                             Function<Integer, String> formatter, Supplier<Integer> dataSupplier) {
+        landscapeReport.startTableCell("text-align: right;");
+        if (subLandscapeAnalysisResults != null) {
+            landscapeReport.addHtmlContent(formatter.apply(dataSupplier.get()) + "");
+        }
+        landscapeReport.endTableCell();
+    }
+
+    private void addOtherLocCell(LandscapeAnalysisResultsReadData subLandscapeAnalysisResults) {
+        landscapeReport.startTableCell("text-align: right;");
+        if (subLandscapeAnalysisResults != null) {
+            int other = subLandscapeAnalysisResults.getBuildAndDeploymentLoc() +
+                    subLandscapeAnalysisResults.getGeneratedLoc() +
+                    subLandscapeAnalysisResults.getOtherLoc();
+            landscapeReport.addHtmlContent("<span style='color: lightgrey'>" + FormattingUtils.formatCount(other) + "</span>");
+        }
+        landscapeReport.endTableCell();
+    }
+
+    private void addCommitPeriodCell(LandscapeAnalysisResultsReadData subLandscapeAnalysisResults, boolean isRoot) {
+        landscapeReport.startTableCell("text-align: right; font-size: 70%");
+        if (subLandscapeAnalysisResults != null) {
+            String firstYear = DateUtils.getYear(subLandscapeAnalysisResults.getFirstCommitDate());
+            String lastYear = DateUtils.getYear(subLandscapeAnalysisResults.getLatestCommitDate());
+            landscapeReport.addHtmlContent(firstYear);
+            landscapeReport.addHtmlContent("-");
+            landscapeReport.addHtmlContent(lastYear);
+            try {
+                int first = Integer.parseInt(firstYear);
+                int last = Integer.parseInt(lastYear);
+                if (last >= first) {
+                    int width = Math.min(20, last - first + 1) * 7;
+                    String periodStyle = "margin-left: auto; margin-right: 0; margin-top: 2px; padding: 0; width: " + width + "px;";
+                    if (!isRoot) {
+                        periodStyle += "background-color: lightgrey; height: 4px;";
+                    } else {
+                        periodStyle += "height: 7px; background-color: green;";
+                    }
+                    landscapeReport.addContentInDiv("", periodStyle);
+                }
+            } catch (NumberFormatException e) {
+                // handle exception if needed
+            }
+        }
+        landscapeReport.endTableCell();
     }
 
     private int compareSubLandscapeLinks(SubLandscapeLink a, SubLandscapeLink b) {
