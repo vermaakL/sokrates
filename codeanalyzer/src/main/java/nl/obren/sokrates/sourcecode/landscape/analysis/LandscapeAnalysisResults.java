@@ -23,6 +23,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import nl.obren.sokrates.sourcecode.landscape.analysis.RepositoryInfo;
 
 import java.util.*;
 import java.util.stream.Collectors;

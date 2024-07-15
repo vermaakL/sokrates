@@ -1,7 +1,3 @@
-/*
- * Copyright (c) 2021 Željko Obrenović. All rights reserved.
- */
-
 package nl.obren.sokrates.sourcecode.dependencies;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
@@ -19,8 +15,7 @@ public class ComponentDependency {
     private String toComponent;
     private int count = 1;
     private String text = null;
-    @JsonIgnore
-    private List<String> data = new ArrayList<>();
+    private DependencyData data = new DependencyData();
     private String color = "";
 
     public ComponentDependency() {
@@ -97,12 +92,11 @@ public class ComponentDependency {
 
     @Override
     public boolean equals(Object other) {
-        boolean result = false;
         if (other instanceof ComponentDependency) {
             ComponentDependency that = (ComponentDependency) other;
             return this.getDependencyString().equals(that.getDependencyString());
         }
-        return result;
+        return false;
     }
 
     @Override
@@ -116,7 +110,7 @@ public class ComponentDependency {
 
     @JsonIgnore
     public boolean hasPathFrom(String path) {
-        return this.getEvidence().stream().filter(e -> e.getPathFrom().equalsIgnoreCase(path)).findAny().isPresent();
+        return this.evidence.stream().anyMatch(e -> e.getPathFrom().equalsIgnoreCase(path));
     }
 
     @JsonIgnore
@@ -134,11 +128,21 @@ public class ComponentDependency {
 
     @JsonIgnore
     public List<String> getData() {
-        return data;
+        return data.getData();
     }
 
     @JsonIgnore
     public void setData(List<String> data) {
-        this.data = data;
+        this.data.setData(data);
+    }
+
+    @JsonIgnore
+    public boolean containsData(String path) {
+        return data.contains(path);
+    }
+
+    @JsonIgnore
+    public void addData(String path) {
+        data.addData(path);
     }
 }
