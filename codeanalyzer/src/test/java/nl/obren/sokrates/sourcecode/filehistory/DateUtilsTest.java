@@ -8,7 +8,7 @@ class DateUtilsTest {
 
     @Test
     void isCommittedBetween() {
-        DateUtils.dateParam = "2020-10-01";
+        DateUtils.setDateParam("2020-10-01");
 
         assertFalse(DateUtils.isCommittedBetween("2020-09-10", 10, 20));
         assertTrue(DateUtils.isCommittedBetween("2020-09-11", 10, 20));
@@ -23,7 +23,7 @@ class DateUtilsTest {
 
     @Test
     void isCommittedLessThanDaysAgo() {
-        DateUtils.dateParam = "2020-10-01";
+        DateUtils.setDateParam("2020-10-01");
         assertTrue(DateUtils.isCommittedLessThanDaysAgo("2020-09-22", 10));
         assertTrue(DateUtils.isCommittedLessThanDaysAgo("2020-09-21", 10));
         assertFalse(DateUtils.isCommittedLessThanDaysAgo("2020-09-19", 10));

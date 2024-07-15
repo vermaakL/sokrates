@@ -1,7 +1,3 @@
-/*
- * Copyright (c) 2020 Željko Obrenović. All rights reserved.
- */
-
 package nl.obren.sokrates.sourcecode.filehistory;
 
 import nl.obren.sokrates.sourcecode.githistory.AuthorCommit;
@@ -14,12 +10,16 @@ import java.util.*;
 public class DateUtils {
     public static final String ENV_SOKRATES_ANALYSIS_DATE = "SOKRATES_ANALYSIS_DATE";
     public static final String DATE_FORMAT = "yyyy-MM-dd";
-    public static String dateParam = null;
+    private static String dateParam = null;
     private static String latestCommitDate = "";
 
     private static Map<String, Boolean> dateInRangeCache = new HashMap<>();
     private static Map<String, Boolean> dateBetweenCache = new HashMap<>();
     private static Map<String, String> mondays = new HashMap<>();
+
+    private DateUtils() {
+        // Private constructor to prevent instantiation
+    }
 
     public static boolean isDateWithinRange(String date, int rangeInDays) {
         if (StringUtils.isBlank(date)) {
@@ -32,11 +32,8 @@ public class DateUtils {
         }
 
         Calendar cal = getCalendar();
-
         cal.add(Calendar.DATE, -rangeInDays);
-
         String thresholdDate = new SimpleDateFormat(DATE_FORMAT).format(cal.getTime());
-
         boolean inRange = date.compareTo(thresholdDate) >= 0;
         dateInRangeCache.put(key, inRange);
 
@@ -45,57 +42,46 @@ public class DateUtils {
 
     public static List<String> getPastDays(int numberOfDays, String latestCommitDate) {
         List<String> dates = new ArrayList<>();
-
         for (int i = 0; i <= numberOfDays; i++) {
             Calendar cal = getCalendar(latestCommitDate);
             cal.add(Calendar.DATE, -i);
             dates.add(new SimpleDateFormat(DATE_FORMAT).format(cal.getTime()));
         }
-
         return dates;
     }
 
     public static List<String> getPastWeeks(int numberOfWeeks, String latestCommitDate) {
         List<String> dates = new ArrayList<>();
-
         if (StringUtils.isNotEmpty(latestCommitDate)) {
             for (int i = 0; i <= numberOfWeeks; i++) {
                 Calendar cal = getCalendar(latestCommitDate);
                 cal.add(Calendar.DATE, -(i * 7));
-
                 String stringDate = new SimpleDateFormat(DATE_FORMAT).format(cal.getTime());
                 dates.add(new AuthorCommit(stringDate, "").getWeekOfYear());
             }
         }
-
         return dates;
     }
 
     public static List<String> getPastMonths(int numberOfMonths, String latestCommitDate) {
         List<String> dates = new ArrayList<>();
-
         for (int i = 0; i <= numberOfMonths; i++) {
             Calendar cal = getCalendar(latestCommitDate);
             cal.add(Calendar.MONTH, -i);
-
             String stringDate = new SimpleDateFormat(DATE_FORMAT).format(cal.getTime());
             dates.add(new AuthorCommit(stringDate, "").getMonth());
         }
-
         return dates;
     }
 
     public static List<String> getPastYears(int numberOfYears, String latestCommitDate) {
         List<String> dates = new ArrayList<>();
-
         for (int i = 0; i <= numberOfYears; i++) {
             Calendar cal = getCalendar(latestCommitDate);
             cal.add(Calendar.YEAR, -i);
-
             String stringDate = new SimpleDateFormat(DATE_FORMAT).format(cal.getTime());
             dates.add(new AuthorCommit(stringDate, "").getYear());
         }
-
         return dates;
     }
 
@@ -118,11 +104,11 @@ public class DateUtils {
             return dateBetweenCache.get(key);
         }
 
-        Calendar cal1 = DateUtils.getCalendar();
+        Calendar cal1 = getCalendar();
         cal1.add(Calendar.DATE, -daysAgo1);
         String thresholdDate1 = new SimpleDateFormat(DATE_FORMAT).format(cal1.getTime());
 
-        Calendar cal2 = DateUtils.getCalendar();
+        Calendar cal2 = getCalendar();
         cal2.add(Calendar.DATE, -daysAgo2);
         String thresholdDate2 = new SimpleDateFormat(DATE_FORMAT).format(cal2.getTime());
 
@@ -134,31 +120,24 @@ public class DateUtils {
 
     public static Calendar getCalendar() {
         Calendar calendar = Calendar.getInstance();
-
         updateWithDateParams(calendar);
-
         return calendar;
     }
 
     public static String getAnalysisDate() {
         Calendar calendar = Calendar.getInstance();
-
         updateWithDateParams(calendar);
-
         return new SimpleDateFormat(DATE_FORMAT).format(calendar.getTime());
     }
 
     public static int getAnalysisYear() {
         Calendar calendar = Calendar.getInstance();
-
         updateWithDateParams(calendar);
-
         return calendar.get(Calendar.YEAR);
     }
 
     public static Calendar getCalendar(String date) {
         Calendar calendar = Calendar.getInstance();
-
         if (StringUtils.isNotBlank(date)) {
             try {
                 SimpleDateFormat sdf = new SimpleDateFormat(DATE_FORMAT);
@@ -167,21 +146,20 @@ public class DateUtils {
                 e.printStackTrace();
             }
         }
-
         return calendar;
     }
 
     private static void updateWithDateParams(Calendar cal) {
         try {
             SimpleDateFormat sdf = new SimpleDateFormat(DATE_FORMAT);
-            if (StringUtils.isNotBlank(DateUtils.dateParam)) {
-                cal.setTime(sdf.parse(DateUtils.dateParam));
+            if (StringUtils.isNotBlank(getDateParam())) {
+                cal.setTime(sdf.parse(getDateParam()));
             } else {
                 String sourceCodeDate = System.getenv(ENV_SOKRATES_ANALYSIS_DATE);
                 if (StringUtils.isNotBlank(sourceCodeDate)) {
                     cal.setTime(sdf.parse(sourceCodeDate));
-                } else if (StringUtils.isNotBlank(latestCommitDate)) {
-                    cal.setTime(sdf.parse(latestCommitDate));
+                } else if (StringUtils.isNotBlank(getLatestCommitDate())) {
+                    cal.setTime(sdf.parse(getLatestCommitDate()));
                 }
             }
         } catch (ParseException e) {
@@ -205,22 +183,19 @@ public class DateUtils {
         DateUtils.latestCommitDate = latestCommitDate;
     }
 
-
     public static String getWeekMonday(String date) {
         if (mondays.containsKey(date)) {
             return mondays.get(date);
         }
         Calendar calendar = getCalendar(date);
-
         if (calendar != null) {
             while (calendar.get(Calendar.DAY_OF_WEEK) != Calendar.MONDAY) {
                 calendar.add(Calendar.DATE, -1);
             }
-            String formatedDate = new SimpleDateFormat("yyyy-MM-dd").format(calendar.getTime());
-            mondays.put(date, formatedDate);
-            return formatedDate;
+            String formattedDate = new SimpleDateFormat("yyyy-MM-dd").format(calendar.getTime());
+            mondays.put(date, formattedDate);
+            return formattedDate;
         }
-
         return "";
     }
 
